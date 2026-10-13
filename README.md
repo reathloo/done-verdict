@@ -13,7 +13,15 @@ The default response is short and stays in chat. Done Verdict does not require p
 
 Done Verdict is for checking a completion claim, not for general test generation, code review, or deployment automation. It does not claim that a passing build proves the app works for users.
 
-For example, if unit tests pass but nobody has installed the built artifact, Done Verdict should report the tested behavior as supported and the installation claim as still unknown. The useful next step is a clean installation of that exact artifact—not another generic test run. This is an illustration of the decision it makes, not a claim that every project needs an installer test.
+For example, if unit tests pass but nobody has installed the built artifact, a useful answer looks like this:
+
+> Source checks: **supported** — 12 relevant tests passed on the current commit.
+>
+> Clean installation: **unknown** — this artifact has not been installed.
+>
+> Next: install this exact artifact in a fresh target environment.
+
+This is illustrative, not a claim that every project needs an installer test. The next check should address the missing evidence for the user's actual question.
 
 ## Install
 

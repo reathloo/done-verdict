@@ -1,23 +1,30 @@
 ---
 name: done-verdict
-description: Evidence-based verification for completed code changes and release readiness. Use when someone asks "is this feature or fix done?", "the tests pass, can I ship?", or "is this release ready?" Run relevant existing checks and distinguish proven behavior from missing runtime, CI, or publication evidence.
+description: Verify whether a completed code change or release is actually ready. Use for questions like "is this fix done?", "the tests pass, can I ship?", or "is this release ready?" Check current evidence, separate tested behavior from runtime or publication claims, and name the next useful check.
 ---
 
 # Done Verdict
 
-Answer the user's completion question with the smallest useful set of current checks and a precise conclusion.
+Answer a completion or release-readiness question with the smallest useful set of current checks and a decision the user can act on. Do not activate for an ordinary request to implement, debug, review, or deploy something unless the user also asks whether it is verified or ready.
 
-## Workflow
+## Decide what to verify
 
-1. Identify the claim and target: the changed behavior, commit or working tree, build artifact, or proposed release. If no target is given, use the current project and the change under discussion. Note the source/ref and environment to which any supplied test log or CI result belongs.
-2. Read applicable project instructions and inspect the relevant diff, scripts, and CI or packaging configuration. Choose checks that can change the answer. Prefer project-provided commands and a real integration path when the claim depends on one.
-3. Run safe, relevant checks within the user's authorized scope. Inspect a check's likely side effects before running it; verification alone does not authorize deployment, live-data changes, or other consequential writes. Use the project's prescribed dependencies when needed, but avoid adding new verification tools or project files for a verification-only request. Record the command or observation, actual tool result, and which claim it supports. Stop once further checks would not improve the answer proportionately.
-4. Match every conclusion to its evidence. Use `supported`, `partly supported`, `unknown`, or `contradicted`; give separate statuses for distinct claims.
-   - Currentness: Logs from an older source state, a different ref, or the wrong environment do not prove the current claim.
-   - Execution: Report a command as executed only when its output or exit status was actually returned. If blocked, say `not run`; inspection of source or test code is not a test result.
-   - Interpretation: Missing tooling, permissions, or infrastructure makes a check inconclusive about product behavior. If runs conflict without a source change, disclose the instability rather than select the favorable result. When a test and implementation disagree, state the mismatch without deciding which expectation is wrong unless a requirement establishes it.
-   - Scope: A passing unit test supports only the behavior it tests. A build or an app/server launch does not establish the user path. A push does not establish publication. A local artifact does not establish public download or installation.
-5. If the user asks about a release, read [release evidence](references/release-evidence.md). For ordinary changes, read it only when distribution, signing, remote CI, or public availability affects the answer.
-6. Reply briefly in the user's language: status, the decisive evidence, the most important remaining gap if any, and one actionable next check. Name a command, environment, or person when that makes the next step concrete. If the requested claim is fully supported, say so without inventing extra work.
+1. Pin the claim and target: changed behavior, working tree or commit, build artifact, or proposed release. Separate distinct claims such as “tests pass” and “users can install it.” If no target is given, use the current project and change under discussion. Note which source/ref and environment supplied evidence belongs to.
+2. Read applicable project instructions and inspect the relevant change and existing check entry points. For a release claim, read [release evidence](references/release-evidence.md) before selecting checks; for ordinary changes, read it only if distribution, signing, remote CI, or public availability matters.
+3. Choose the cheapest checks that could change the answer. Prefer project-provided commands and the actual user path when the claim depends on one. Inspect scripts for likely side effects first. Verification alone does not authorize deployment, live-data changes, or other consequential writes. Use prescribed project dependencies when needed, but do not add verification tools or project files merely to answer a verification-only request. Stop when more checks would not improve the decision proportionately.
+4. Run the safe checks within the user's scope. For each, retain the command or observation, result, source state, and claim it bears on. A check is “run” only if its result was actually returned; otherwise say `not run`. Reading test code is not executing it.
 
-Do not turn this verification request into a code review, test-writing task, or release operation unless the user asked for those actions. Follow the user's existing authorization for any requested implementation or publication. Never infer that a simulated check proves a real-device, permission, installer, or public-user path.
+## Give the verdict
+
+Use one status per claim; translate the labels naturally when replying in another language:
+
+- `supported`: current evidence covers the claim in the stated scope.
+- `partly supported`: evidence covers some parts, but a material part remains unverified.
+- `unknown`: no decisive current evidence is available, or the relevant check was blocked.
+- `contradicted`: current evidence conflicts with the claim.
+
+Keep evidence boundaries explicit. An older or wrong-ref log does not prove the current change. A missing runner or inaccessible CI is inconclusive about product behavior. Conflicting runs indicate instability; do not select only the favorable run. A failing test establishes a mismatch, but not which side is wrong without a requirement. A green suite does not cover skipped or deselected tests. Unit tests prove only their covered behavior; a build or server launch does not prove the user path; a push does not prove publication; a listed artifact does not prove anonymous download or installation.
+
+Reply briefly in the user's language with the verdict, decisive evidence (including the actual result when a check ran), the most important gap, and one actionable next check. For multiple claims, report them separately. For example: “Source checks: supported — 12 tests passed on this commit. Clean installation: unknown — not attempted. Next: install this exact artifact in a fresh environment.” If the requested claim is fully supported, say so without inventing another gate.
+
+Do not turn verification into code review, test-writing, or release execution unless requested. Preserve the user's authorization boundaries. Never treat a simulated check as proof of a real-device, permission, installer, or public-user path.
