@@ -1,9 +1,9 @@
 ---
-name: shipproof
+name: done-verdict
 description: Evidence-based verification for completed code changes and release readiness. Use when someone asks "is this feature or fix done?", "the tests pass, can I ship?", or "is this release ready?" Run relevant existing checks and distinguish proven behavior from missing runtime, CI, or publication evidence.
 ---
 
-# Shipproof
+# Done Verdict
 
 Answer the user's completion question with the smallest useful set of current checks and a precise conclusion.
 
