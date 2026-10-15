@@ -1,27 +1,34 @@
 # Done Verdict
 
-Done Verdict helps a coding agent verify a completed feature or bug fix and assess release readiness: **What is actually proven, and what should I check next?** It inspects the relevant project state, runs suitable existing checks, and reports only claims those checks support.
+Done Verdict gives a coding agent a repeatable answer to one narrower question: **Is this exact public GitHub release actually available, and what part remains unproven?** Its read-only Python checker verifies the tag commit, published release, optional exact-commit GitHub Actions run, and optional anonymous asset download with SHA-256.
 
 Typical prompts:
 
-- “Is this fix ready to call done? Verify the changed behavior.”
-- “Is this feature done, or are the passing tests missing a real integration path?”
-- “Can I ship this build? Check the release evidence.”
-- “The tests pass. What remains unverified?”
+- “Is `v1.2.3` really published for this commit?”
+- “Did `ci.yml` pass for the commit behind this tag?”
+- “Can a user download `app.zip` anonymously, and does its checksum match?”
 
-The default response is short and stays in chat. Done Verdict does not require project configuration or a separate reporting service. It uses existing project instructions and commands, and it distinguishes local tests, real runtime behavior, remote CI, and public distribution.
+The checker uses Python 3.9+'s standard library, requires no account or token, and does not modify the repository or run downloaded files. Its JSON output keeps each claim separate. For example:
 
-Done Verdict is for checking a completion claim, not for general test generation, code review, or deployment automation. It does not claim that a passing build proves the app works for users.
+```sh
+python3 skills/done-verdict/scripts/release_proof.py \
+  --repo owner/project --tag v1.2.3 --expected-commit FULL_40_CHARACTER_SHA \
+  --workflow ci.yml --asset app.zip --download
+```
 
-For example, if unit tests pass but nobody has installed the built artifact, a useful answer looks like this:
+This does **not** prove that the artifact installs, runs, is signed, or is accepted by an app store. It is not a generic feature-verification skill, deployment tool, or substitute for target-platform testing.
 
-> Source checks: **supported** — 12 relevant tests passed on the current commit.
+For example, if a published release and anonymous download are confirmed but nobody has installed the artifact, a useful answer looks like this:
+
+> Public release: **supported** — tag `v1.2.3` resolves to the expected commit and the release is published.
 >
-> Clean installation: **unknown** — this artifact has not been installed.
+> Anonymous download: **supported** — `app.zip` was fetched and its SHA-256 matched.
+>
+> Clean installation: **unknown** — the downloaded artifact has not been installed.
 >
 > Next: install this exact artifact in a fresh target environment.
 
-This is illustrative, not a claim that every project needs an installer test. The next check should address the missing evidence for the user's actual question.
+The output is evidence, not a universal “ship it” score. The next check should address the user's actual remaining claim.
 
 ## Install
 
@@ -33,11 +40,11 @@ npx skills add reathloo/done-verdict --skill done-verdict
 
 The [skills.sh page](https://www.skills.sh/reathloo/done-verdict/done-verdict) shows the public listing. A listing is not the same as a top search position or an independent quality endorsement.
 
-The skill is plain Markdown; it requires no account, service, or project-specific configuration. The CLI downloads the current version from GitHub. Review the skill before installing it in a project, as you would with any agent instructions.
+The CLI downloads the current published version from GitHub. The checker requires Python 3.9+ and network access to public GitHub endpoints when run. Review any agent instructions before installing them in a project.
 
 ## Current state
 
-This is an early public version. Its package structure and local installation have been checked, and initial behavioral smoke tests caught and corrected two unsupported conclusions. Broader cross-project comparisons and independent user trials are still open. Do not treat an install count or a passing example as proof that the skill is reliable in every project.
+Starting with `v0.3.0`, the public skill includes the deterministic release checker. Its unit tests and public-release smoke tests do not prove broad reliability or incremental value over an unaided agent; cross-project comparisons and independent user feedback remain open. Do not treat an install count as a quality endorsement.
 
 If Done Verdict makes an unsupported claim or misses an important check, [open an issue](https://github.com/reathloo/done-verdict/issues) with the question, the evidence the agent actually saw, and the expected decision. Please remove private code, credentials, and personal data before sharing logs.
 

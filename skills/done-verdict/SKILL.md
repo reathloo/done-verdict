@@ -1,30 +1,21 @@
 ---
 name: done-verdict
-description: Verify whether a completed code change or release is actually ready. Use for questions like "is this fix done?", "the tests pass, can I ship?", or "is this release ready?" Check current evidence, separate tested behavior from runtime or publication claims, and name the next useful check.
+description: Verify a public GitHub release against its exact tag commit, published release, optional GitHub Actions run, and downloadable asset. Use when someone asks whether a tagged release is really live, whether CI passed for that exact revision, or whether users can fetch a release asset. Distinguish these proofs from installation and runtime behavior.
 ---
 
 # Done Verdict
 
-Answer a completion or release-readiness question with the smallest useful set of current checks and a decision the user can act on. Do not activate for an ordinary request to implement, debug, review, or deploy something unless the user also asks whether it is verified or ready.
+Produce a bounded, repeatable evidence verdict for one public GitHub release. Do not activate for ordinary code completion, generic test-running, or a release that does not use public GitHub Releases. Never publish, install, or execute an artifact as part of verification.
 
-## Decide what to verify
+## Check the exact claim
 
-1. Pin the claim and target: changed behavior, working tree or commit, build artifact, or proposed release. Separate distinct claims such as “tests pass” and “users can install it.” If no target is given, use the current project and change under discussion. Note which source/ref and environment supplied evidence belongs to.
-2. Read applicable project instructions and inspect the relevant change and existing check entry points. For a release claim, read [release evidence](references/release-evidence.md) before selecting checks; for ordinary changes, read it only if distribution, signing, remote CI, or public availability matters.
-3. Choose the cheapest checks that could change the answer. Prefer project-provided commands and the actual user path when the claim depends on one. Inspect scripts for likely side effects first. Verification alone does not authorize deployment, live-data changes, or other consequential writes. Use prescribed project dependencies when needed, but do not add verification tools or project files merely to answer a verification-only request. Stop when more checks would not improve the decision proportionately.
-4. Run the safe checks within the user's scope. For each, retain the command or observation, result, source state, and claim it bears on. A check is “run” only if its result was actually returned; otherwise say `not run`. Reading test code is not executing it.
+1. Identify `OWNER/REPO` and exact `TAG`. If the user means the current local commit, read the project's instructions and obtain its full SHA with `git rev-parse HEAD`; pass it as `--expected-commit`. Do not assume the local checkout matches the release.
+2. Run `python3 scripts/release_proof.py --repo OWNER/REPO --tag TAG --expected-commit FULL_SHA` from this skill directory. The script requires Python 3.9+, uses only its standard library and anonymous, read-only HTTP. It prints JSON; exit 0 means evidence collection completed, **not** that all claims passed. Exit 2 means invalid input.
+3. Add only checks relevant to the question: `--workflow ci.yml` for one named GitHub Actions workflow; `--asset exact-name.zip --download` for an anonymous download; optionally `--sha256 HEX` for a known expected digest. Download is limited to 50 MB by default, with `--max-bytes` available up to 500 MB. Do not guess an asset or workflow name; inspect the repository if needed.
+4. Read each claim's `status`, `detail`, and `source`. `supported` means the stated observation succeeded; `contradicted` means it conflicts with the claim; `unknown` means unavailable, pending, or untested. Treat a 403/rate limit as unknown. A listed asset is not a successful download; a successful download is not an installation or a trusted runtime. If no workflow or asset was selected, those claims were not checked.
 
-## Give the verdict
+Use [release evidence boundaries](references/release-evidence.md) only for claims outside this script's scope. If the user asks about a non-GitHub release, this deterministic check does not apply; answer from actual project-specific evidence without inventing an equivalent automated proof.
 
-Use one status per claim; translate the labels naturally when replying in another language:
+## Answer
 
-- `supported`: current evidence covers the claim in the stated scope.
-- `partly supported`: evidence covers some parts, but a material part remains unverified.
-- `unknown`: no decisive current evidence is available, or the relevant check was blocked.
-- `contradicted`: current evidence conflicts with the claim.
-
-Keep evidence boundaries explicit. An older or wrong-ref log does not prove the current change. A missing runner or inaccessible CI is inconclusive about product behavior. Conflicting runs indicate instability; do not select only the favorable run. A failing test establishes a mismatch, but not which side is wrong without a requirement. A green suite does not cover skipped or deselected tests. Unit tests prove only their covered behavior; a build or server launch does not prove the user path; a push does not prove publication; a listed artifact does not prove anonymous download or installation.
-
-Reply briefly in the user's language with the verdict, decisive evidence (including the actual result when a check ran), the most important gap, and one actionable next check. For multiple claims, report them separately. For example: “Source checks: supported — 12 tests passed on this commit. Clean installation: unknown — not attempted. Next: install this exact artifact in a fresh environment.” If the requested claim is fully supported, say so without inventing another gate.
-
-Do not turn verification into code review, test-writing, or release execution unless requested. Preserve the user's authorization boundaries. Never treat a simulated check as proof of a real-device, permission, installer, or public-user path.
+Report the target tag and observed commit, then the relevant claim statuses with the decisive result. State the largest remaining gap and one concrete next check only when needed. Keep distinct claims distinct; never collapse a successful tag lookup into “release ready.” If the user asks whether an artifact **works after installation**, say `unknown` unless that exact artifact was independently installed and exercised in the target environment. Do not claim remote CI, public availability, platform trust, or installation from local tests or a Git push.

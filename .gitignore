@@ -1,0 +1,14 @@
+# Local evaluation artifacts
+work/
+evals/results/
+
+# Project-local skill installation (the source of truth is skills/done-verdict/)
+.agents/
+skills-lock.json
+
+# Common tool caches
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
