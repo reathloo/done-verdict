@@ -1,6 +1,6 @@
 # Done Verdict
 
-Done Verdict gives a coding agent a repeatable answer to one narrower question: **Is this exact public GitHub release actually available, and what part remains unproven?** Its read-only Python checker verifies the tag commit, published release, optional exact-commit GitHub Actions run, and optional anonymous asset download with SHA-256.
+Done Verdict gives a coding agent a repeatable answer to one narrower question: **Is this exact public GitHub release actually available, and what part remains unproven?** Its read-only Python checker verifies the real Git tag ref and commit (not a same-named branch), published release, optional exact-commit GitHub Actions run, and optional anonymous asset download with size and SHA-256 checks.
 
 Typical prompts:
 
@@ -16,7 +16,9 @@ python3 skills/done-verdict/scripts/release_proof.py \
   --workflow ci.yml --asset app.zip --download
 ```
 
-This does **not** prove that the artifact installs, runs, is signed, or is accepted by an app store. It is not a generic feature-verification skill, deployment tool, or substitute for target-platform testing.
+Replace the placeholders with the exact repository, tag, intended full commit SHA, workflow filename, and release-asset name. Omit optional flags when those claims are not part of the question. The result records what was requested and when it was observed; `supported`, `contradicted`, and `unknown` are reported per claim. A zero process exit code means the check ran, **not** that every claim passed. When both `--sha256` and GitHub's asset digest exist, both must agree with the downloaded bytes for the checksum claim to be supported. A published prerelease is identified as a prerelease.
+
+This does **not** prove that the artifact installs, runs, came from the successful CI run, is signed, or is accepted by an app store. It is not a generic feature-verification skill, deployment tool, or substitute for target-platform testing.
 
 For example, if a published release and anonymous download are confirmed but nobody has installed the artifact, a useful answer looks like this:
 
@@ -44,7 +46,7 @@ The CLI downloads the current published version from GitHub. The checker require
 
 ## Current state
 
-Starting with `v0.3.0`, the public skill includes the deterministic release checker. Its unit tests and public-release smoke tests do not prove broad reliability or incremental value over an unaided agent; cross-project comparisons and independent user feedback remain open. Do not treat an install count as a quality endorsement.
+The public `v0.3.1` skill includes the real-tag check, prerelease labeling, and comparison of both available SHA-256 expectations. Unit tests and public-release smoke tests do not prove broad reliability or incremental value over an unaided agent; cross-project comparisons and independent user feedback remain open. Do not treat an install count as a quality endorsement.
 
 If Done Verdict makes an unsupported claim or misses an important check, [open an issue](https://github.com/reathloo/done-verdict/issues) with the question, the evidence the agent actually saw, and the expected decision. Please remove private code, credentials, and personal data before sharing logs.
 

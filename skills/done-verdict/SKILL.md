@@ -1,21 +1,38 @@
 ---
 name: done-verdict
-description: Verify a public GitHub release against its exact tag commit, published release, optional GitHub Actions run, and downloadable asset. Use when someone asks whether a tagged release is really live, whether CI passed for that exact revision, or whether users can fetch a release asset. Distinguish these proofs from installation and runtime behavior.
+description: Check whether a public GitHub Release is actually published for an intended tag commit, whether a selected CI workflow passed on that commit, and whether a named asset downloads with matching size and SHA-256. Use for release-ready, published-release, wrong-tag, CI-on-tag, or public-download questions; not ordinary feature completion.
 ---
 
 # Done Verdict
 
-Produce a bounded, repeatable evidence verdict for one public GitHub release. Do not activate for ordinary code completion, generic test-running, or a release that does not use public GitHub Releases. Never publish, install, or execute an artifact as part of verification.
+Produce a bounded, repeatable verdict for **one public GitHub Release**. The script turns GitHub observations into separate claims; it does not decide that a product is universally “ready.” Do not use this workflow for ordinary code completion, generic tests, private repositories, or non-GitHub distribution.
 
-## Check the exact claim
+## Fast path
 
-1. Identify `OWNER/REPO` and exact `TAG`. If the user means the current local commit, read the project's instructions and obtain its full SHA with `git rev-parse HEAD`; pass it as `--expected-commit`. Do not assume the local checkout matches the release.
-2. Run `python3 scripts/release_proof.py --repo OWNER/REPO --tag TAG --expected-commit FULL_SHA` from this skill directory. The script requires Python 3.9+, uses only its standard library and anonymous, read-only HTTP. It prints JSON; exit 0 means evidence collection completed, **not** that all claims passed. Exit 2 means invalid input.
-3. Add only checks relevant to the question: `--workflow ci.yml` for one named GitHub Actions workflow; `--asset exact-name.zip --download` for an anonymous download; optionally `--sha256 HEX` for a known expected digest. Download is limited to 50 MB by default, with `--max-bytes` available up to 500 MB. Do not guess an asset or workflow name; inspect the repository if needed.
-4. Read each claim's `status`, `detail`, and `source`. `supported` means the stated observation succeeded; `contradicted` means it conflicts with the claim; `unknown` means unavailable, pending, or untested. Treat a 403/rate limit as unknown. A listed asset is not a successful download; a successful download is not an installation or a trusted runtime. If no workflow or asset was selected, those claims were not checked.
+1. Pin `OWNER/REPO` and the exact release `TAG` from the user's request, relevant project config, or repository. If the intended revision is the current local commit, read project instructions and use `git rev-parse HEAD` for `--expected-commit`; a tag resolving to *some* commit is weaker evidence than matching the intended commit. Never silently substitute the latest tag or `main`.
+2. From this skill directory, run the Python 3.9+ standard-library checker:
 
-Use [release evidence boundaries](references/release-evidence.md) only for claims outside this script's scope. If the user asks about a non-GitHub release, this deterministic check does not apply; answer from actual project-specific evidence without inventing an equivalent automated proof.
+   ```sh
+   python3 scripts/release_proof.py --repo OWNER/REPO --tag TAG --expected-commit FULL_40_CHARACTER_SHA
+   ```
 
-## Answer
+   Omit `--expected-commit` only when no intended SHA can be established; then report only that the tag resolves. The checker uses anonymous, read-only HTTP and prints JSON. Exit 0 means **collection completed**, not “release passed”; exit 2 means invalid arguments.
+3. Add only the checks the user actually needs:
 
-Report the target tag and observed commit, then the relevant claim statuses with the decisive result. State the largest remaining gap and one concrete next check only when needed. Keep distinct claims distinct; never collapse a successful tag lookup into “release ready.” If the user asks whether an artifact **works after installation**, say `unknown` unless that exact artifact was independently installed and exercised in the target environment. Do not claim remote CI, public availability, platform trust, or installation from local tests or a Git push.
+   | Question | Additional flags | Evidence boundary |
+   | --- | --- | --- |
+   | Did one workflow pass on this commit? | `--workflow ci.yml` | Checks the latest run found for that workflow and tag commit, not all CI. |
+   | Is an asset listed? | `--asset exact-name.zip` | Metadata only; no public download proof. |
+   | Can an anonymous user fetch it? | `--asset exact-name.zip --download` | In-memory fetch, listed size, and SHA-256; no installation. |
+   | Does it match a known digest? | Add `--sha256 HEX` to the download | Compares both the supplied digest and GitHub's asset digest when available. |
+
+   Do not guess workflow or asset names. Inspect the release/repository read-only or ask for the intended one. The default download cap is 50 MB; `--max-bytes` may be raised to 500 MB only when the larger fetch is relevant.
+
+## Interpret, then answer
+
+- Read `requested`, `observed_at`, and **each** `claims[]` item (`status`, `detail`, `source`). An omitted optional check was **not checked**, not successful. `supported` means the observed narrow claim holds; `contradicted` means direct evidence conflicts; `unknown` means unavailable, pending, malformed, or not decisive. A 403/rate limit is unknown, not a failed release.
+- The checker verifies an actual Git **tag ref**, including annotated tags; a same-named branch is not a tag. It also marks a published prerelease as a *prerelease*, not a stable release. A CI success on the same commit does not prove every workflow passed or that the release artifact came from that run.
+- Report the target, observed tag SHA, relevant claim statuses and decisive evidence, then the largest unresolved user claim and one useful next check. If the claim is fully supported within its stated scope, stop there. Example: “Tag `v1.2.3`: supported — points to expected SHA. Public release: supported — published prerelease. Download: unknown — not requested. Installation: unknown — not tested.”
+- A listed asset is not a successful anonymous download; a downloaded asset is not an installed, signed, or working product. Read [release evidence boundaries](references/release-evidence.md) when the user asks about installation, platform trust, stores, privacy/offline behavior, or other claims beyond this checker.
+
+The checker itself never publishes, installs, or executes artifacts. Do not infer permission to do those things from a request for a verdict; if separately requested, handle them as separate scoped tasks. For a non-GitHub release, explain that this check does not apply and rely only on actual project-specific evidence.
